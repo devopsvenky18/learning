@@ -1,9 +1,9 @@
-//this jenkinsfile is scripted pipeline
-//pull the code from github
-//compile and create the package
-//create tomcat image and copy the .wat to image
-//push the image to docker hub
-//pull the image from doker hub and deploy the container in another node
+/** this jenkinsfile is scripted pipeline
+pull the code from github
+compile and create the package
+create tomcat image and copy the .wat to image
+push the image to docker hub
+pull the image from doker hub and deploy the container in another node */
 
 node{
     env.JAVA_HOME=tool name: 'myjava', type: 'jdk'
@@ -26,12 +26,14 @@ node{
             sh "${mvnCMD} package"
         }
     }
+// Build the docker image using docker file    
     stage('Build Docker image'){
         script{
             sh "sudo docker build -t devopsvenky18/tomcat-addbook ."
         }
     }
     stage('push the image to hub'){
+ //push the image into docker hub, to hide the password of docker hub use kind as secret text and pass the password.
         script{
             withCredentials([string(credentialsId: 'docker_hub_pwd', variable: 'docker_hub_pwd')]) {
             sh "docker login -u devopsvenky18 -p ${docker_hub_pwd}"
@@ -39,6 +41,7 @@ node{
             sh "docker push devopsvenky18/tomcat-addbook"
         }
     }
+ // in below true , it will check and continue to next step even its failed   
     stage('deploy the image to slave node'){
         script{
             def dockerRun = 'docker run -d -p 8080:8080 --name tomaddbook1 devopsvenky18/tomcat-addbook'
