@@ -1,0 +1,56 @@
+//this jenkinsfile is scripted pipeline
+//pull the code from github
+//compile and create the package
+//create tomcat image and copy the .wat to image
+//push the image to docker hub
+//pull the image from doker hub and deploy the container in another node
+
+node{
+    env.JAVA_HOME=tool name: 'myjava', type: 'jdk'
+    def mvnHome=tool name: 'mymaven', type: 'maven'
+    def mvnCMD = "${mvnHome}/bin/mvn"
+    
+    stage('Git checkout'){
+        git 'https://github.com/devopsvenky18/edureka.git'
+    }
+    
+    stage('compile'){
+        script{
+            echo "copile the source code"
+            sh "${mvnCMD} compile"
+        }
+    }
+    stage('package'){
+        script{
+            echo "package the code"
+            sh "${mvnCMD} package"
+        }
+    }
+    stage('Build Docker image'){
+        script{
+            sh "sudo docker build -t devopsvenky18/tomcat-addbook ."
+        }
+    }
+    stage('push the image to hub'){
+        script{
+            withCredentials([string(credentialsId: 'docker_hub_pwd', variable: 'docker_hub_pwd')]) {
+            sh "docker login -u devopsvenky18 -p ${docker_hub_pwd}"
+            }
+            sh "docker push devopsvenky18/tomcat-addbook"
+        }
+    }
+    stage('deploy the image to slave node'){
+        script{
+            def dockerRun = 'docker run -d -p 8080:8080 --name tomaddbook1 devopsvenky18/tomcat-addbook'
+            sshagent(['deploy_key']) {
+                sh 'ssh -o StrictHostKeyChecking=no jenkins@172.31.26.36 sudo docker stop tomaddbook || true'
+                sh 'ssh jenkins@172.31.26.36 sudo docker rm  tomaddbook || true'
+                sh 'ssh jenkins@172.31.26.36 sudo docker rmi -f $(docker images -q) || true'
+                sh "ssh -T jenkins@172.31.26.36 sudo ${dockerRun}"
+    
+                }
+            
+        }
+        
+    }
+}
